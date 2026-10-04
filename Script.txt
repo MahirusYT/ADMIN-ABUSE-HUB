@@ -1,0 +1,608 @@
+-- ================================================================
+-- ADMIN ABUSE EAB — VERSÃO COMPLETA + FECHAR/ABRIR
+-- ================================================================
+
+local UIS = game:GetService("UserInputService")
+local P = game:GetService("Players").LocalPlayer
+local C = workspace.CurrentCamera
+local RS = game:GetService("RunService")
+local TS = game:GetService("TweenService")
+local CG = game:GetService("CoreGui")
+
+-- ================================================================
+-- LIMPEZA TOTAL
+-- ================================================================
+local NOME = "AdminAbuseEAB"
+
+local function limparAntigas()
+    pcall(function()
+        local a = CG:FindFirstChild(NOME)
+        if a then a:Destroy() end
+    end)
+    pcall(function()
+        local pg = P:FindFirstChild("PlayerGui")
+        if pg and pg:FindFirstChild(NOME) then pg[NOME]:Destroy() end
+    end)
+    pcall(function()
+        if gethui and gethui():FindFirstChild(NOME) then gethui()[NOME]:Destroy() end
+    end)
+    pcall(function()
+        for _, gui in ipairs(CG:GetChildren()) do
+            if gui.Name == NOME then gui:Destroy() end
+        end
+    end)
+    pcall(function()
+        local pg = P:FindFirstChild("PlayerGui")
+        if pg then
+            for _, gui in ipairs(pg:GetChildren()) do
+                if gui.Name == NOME then gui:Destroy() end
+            end
+        end
+    end)
+end
+
+limparAntigas()
+task.wait(0.05)
+
+-- ================================================================
+-- CORES
+-- ================================================================
+local ROXO      = Color3.fromRGB(75, 0, 130)
+local ROXO_HOV  = Color3.fromRGB(95, 10, 160)
+local ROXO_ATIV = Color3.fromRGB(110, 20, 180)
+local PRETO     = Color3.fromRGB(15, 15, 15)
+local VERMELHO  = Color3.fromRGB(200, 50, 50)
+
+-- ================================================================
+-- GUI
+-- ================================================================
+local sg = Instance.new("ScreenGui")
+sg.Name = NOME
+sg.ResetOnSpawn = false
+sg.IgnoreGuiInset = true
+sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+local parentOK = pcall(function() sg.Parent = CG end)
+if not parentOK then sg.Parent = P:WaitForChild("PlayerGui") end
+
+local isMobile = UIS.TouchEnabled and not UIS.MouseEnabled
+local W = isMobile and 250 or 270
+
+-- ===== FRAME PRINCIPAL =====
+local main = Instance.new("Frame")
+main.Name = "Main"
+main.AnchorPoint = Vector2.new(0.5, 0.5)
+main.Position = UDim2.new(0.5, 0, 0.5, 0)
+main.Size = UDim2.new(0, W, 0, 480)
+main.BackgroundColor3 = PRETO
+main.BorderSizePixel = 0
+main.Active = true
+main.Draggable = false
+main.Parent = sg
+Instance.new("UICorner", main).CornerRadius = UDim.new(0, 6)
+
+-- ===== TÍTULO (área de drag) =====
+local titulo = Instance.new("TextLabel")
+titulo.Size = UDim2.new(1, 0, 0, 34)
+titulo.BackgroundColor3 = ROXO
+titulo.BorderSizePixel = 0
+titulo.Text = "ADMIN ABUSE EAB"
+titulo.TextColor3 = Color3.fromRGB(255, 255, 255)
+titulo.TextSize = isMobile and 15 or 17
+titulo.Font = Enum.Font.GothamBold
+titulo.Parent = main
+Instance.new("UICorner", titulo).CornerRadius = UDim.new(0, 6)
+
+-- ===== BOTÃO X (FECHAR) =====
+local btnFechar = Instance.new("TextButton")
+btnFechar.Size = UDim2.new(0, 26, 0, 26)
+btnFechar.Position = UDim2.new(1, -30, 0, 4)
+btnFechar.BackgroundColor3 = VERMELHO
+btnFechar.BorderSizePixel = 0
+btnFechar.Text = "X"
+btnFechar.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnFechar.TextSize = 14
+btnFechar.Font = Enum.Font.GothamBold
+btnFechar.AutoButtonColor = false
+btnFechar.Parent = main
+Instance.new("UICorner", btnFechar).CornerRadius = UDim.new(0, 6)
+
+-- ===== BOTÃO ABRIR (flutuante, começa escondido) =====
+local btnAbrir = Instance.new("TextButton")
+btnAbrir.Size = UDim2.new(0, 50, 0, 50)
+btnAbrir.Position = UDim2.new(0, 20, 0, 20)
+btnAbrir.BackgroundColor3 = ROXO
+btnAbrir.BorderSizePixel = 0
+btnAbrir.Text = "EAB"
+btnAbrir.TextColor3 = Color3.fromRGB(255, 255, 255)
+btnAbrir.TextSize = 14
+btnAbrir.Font = Enum.Font.GothamBold
+btnAbrir.AutoButtonColor = false
+btnAbrir.Visible = false
+btnAbrir.Parent = sg
+Instance.new("UICorner", btnAbrir).CornerRadius = UDim.new(1, 0)
+
+local strokeAbrir = Instance.new("UIStroke", btnAbrir)
+strokeAbrir.Color = Color3.fromRGB(140, 60, 200)
+strokeAbrir.Thickness = 2
+
+-- ===== FUNÇÕES DE ABRIR/FECHAR =====
+local function fechar()
+    main.Visible = false
+    btnAbrir.Visible = true
+end
+
+local function abrir()
+    btnAbrir.Visible = false
+    main.Visible = true
+end
+
+btnFechar.MouseButton1Click:Connect(fechar)
+btnAbrir.MouseButton1Click:Connect(abrir)
+
+-- hover do X
+if not isMobile then
+    btnFechar.MouseEnter:Connect(function()
+        TS:Create(btnFechar, TweenInfo.new(0.1), { BackgroundColor3 = Color3.fromRGB(230, 70, 70) }):Play()
+    end)
+    btnFechar.MouseLeave:Connect(function()
+        TS:Create(btnFechar, TweenInfo.new(0.1), { BackgroundColor3 = VERMELHO }):Play()
+    end)
+end
+
+-- ================================================================
+-- DRAG UNIVERSAL (só pelo título)
+-- ================================================================
+local dragging, dragInput, dragStart, startPos = false, nil, nil, nil
+
+local function tornarArrastavel(handle)
+    handle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            dragStart = input.Position
+            startPos = main.Position
+            dragInput = input
+        end
+    end)
+    handle.InputChanged:Connect(function(input)
+        if input == dragInput
+        and (input.UserInputType == Enum.UserInputType.MouseMovement
+          or input.UserInputType == Enum.UserInputType.Touch) then
+            if not dragging then return end
+            local delta = input.Position - dragStart
+            main.Position = UDim2.new(
+                startPos.X.Scale, startPos.X.Offset + delta.X,
+                startPos.Y.Scale, startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+    handle.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+        or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+            dragInput = nil
+        end
+    end)
+end
+
+-- arrasta SÓ pelo título (pra não bugar os botões)
+tornarArrastavel(titulo)
+
+-- bloqueia drag ao encostar no X
+btnFechar.InputBegan:Connect(function(i)
+    if i.UserInputType == Enum.UserInputType.MouseButton1
+    or i.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+        dragInput = nil
+    end
+end)
+
+-- ================================================================
+-- HELPERS DE BOTÕES
+-- ================================================================
+local Y = 42
+local GAP = 42
+
+local function addToggle(texto, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -20, 0, 34)
+    btn.Position = UDim2.new(0, 10, 0, Y)
+    btn.BackgroundColor3 = ROXO
+    btn.BorderSizePixel = 0
+    btn.Text = texto
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = isMobile and 13 or 14
+    btn.Font = Enum.Font.GothamBold
+    btn.AutoButtonColor = false
+    btn.Parent = main
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+
+    local estado = false
+    btn.MouseButton1Click:Connect(function()
+        estado = not estado
+        btn.BackgroundColor3 = estado and ROXO_ATIV or ROXO
+        if callback then callback(estado) end
+    end)
+
+    if not isMobile then
+        btn.MouseEnter:Connect(function()
+            if not estado then
+                TS:Create(btn, TweenInfo.new(0.1), { BackgroundColor3 = ROXO_HOV }):Play()
+            end
+        end)
+        btn.MouseLeave:Connect(function()
+            if not estado then
+                TS:Create(btn, TweenInfo.new(0.1), { BackgroundColor3 = ROXO }):Play()
+            end
+        end)
+    end
+
+    Y = Y + GAP
+    return btn, function() return estado end
+end
+
+local function addAction(texto, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -20, 0, 34)
+    btn.Position = UDim2.new(0, 10, 0, Y)
+    btn.BackgroundColor3 = Color3.fromRGB(150, 30, 30)
+    btn.BorderSizePixel = 0
+    btn.Text = texto
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = isMobile and 13 or 14
+    btn.Font = Enum.Font.GothamBold
+    btn.AutoButtonColor = false
+    btn.Parent = main
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+
+    btn.MouseButton1Click:Connect(function()
+        if callback then callback() end
+    end)
+
+    if not isMobile then
+        btn.MouseEnter:Connect(function()
+            TS:Create(btn, TweenInfo.new(0.1), { BackgroundColor3 = Color3.fromRGB(190, 40, 40) }):Play()
+        end)
+        btn.MouseLeave:Connect(function()
+            TS:Create(btn, TweenInfo.new(0.1), { BackgroundColor3 = Color3.fromRGB(150, 30, 30) }):Play()
+        end)
+    end
+
+    Y = Y + GAP
+    return btn
+end
+
+-- ================================================================
+-- ESTADO
+-- ================================================================
+local freezeOn, freezeConn = false, nil
+local speedOn, speedConn = false, nil
+local SPEED_VAL = 50
+local jumpOn, jumpConn = false, nil
+local JUMP_VAL = 100
+local flyOn, flyConn, flyBV, flyBG = false, nil, nil, nil
+local noclipOn, noclipConn = false, nil
+local espOn, espHighlights = false, {}
+local infJumpOn, infJumpConn = false, nil
+local buyOn, buyProcessando = false, false
+local walkspeedSalvo, jumppowerSalvo = 16, 50
+
+-- ================================================================
+-- HELPERS
+-- ================================================================
+local function getHRP()
+    local chr = P.Character
+    if not chr then return nil end
+    return chr:FindFirstChild("HumanoidRootPart")
+end
+
+local function getHum()
+    local chr = P.Character
+    if not chr then return nil end
+    return chr:FindFirstChildOfClass("Humanoid")
+end
+
+local function pegarParte(p)
+    local o = p.Parent
+    while o and not o:IsA("BasePart") do
+        if o == workspace then return nil end
+        o = o.Parent
+    end
+    return o
+end
+
+-- ================================================================
+-- 1. FREEZE
+-- ================================================================
+local function aplicarFreeze()
+    local hrp = getHRP()
+    local hum = getHum()
+    if not hrp then return end
+    local posTravada = hrp.CFrame
+    if hum then hum.WalkSpeed = 0 hum.JumpPower = 0 hum.JumpHeight = 0 end
+    if freezeConn then freezeConn:Disconnect() end
+    freezeConn = RS.RenderStepped:Connect(function()
+        if hrp and hrp.Parent then
+            hrp.Anchored = true
+            hrp.CFrame = posTravada
+            hrp.AssemblyLinearVelocity = Vector3.zero
+            hrp.AssemblyAngularVelocity = Vector3.zero
+        end
+    end)
+end
+
+local function removerFreeze()
+    if freezeConn then freezeConn:Disconnect() freezeConn = nil end
+    local hrp = getHRP()
+    local hum = getHum()
+    if hrp then hrp.Anchored = false end
+    if hum then hum.WalkSpeed = walkspeedSalvo hum.JumpPower = jumppowerSalvo hum.JumpHeight = 7.2 end
+end
+
+addToggle("❄ Freeze", function(on)
+    freezeOn = on
+    if on then aplicarFreeze() else removerFreeze() end
+end)
+
+-- ================================================================
+-- 2. SPEED
+-- ================================================================
+addToggle("⚡ Speed Hack", function(on)
+    speedOn = on
+    if speedConn then speedConn:Disconnect() speedConn = nil end
+    if on then
+        speedConn = RS.Heartbeat:Connect(function()
+            local hum = getHum()
+            if hum then hum.WalkSpeed = SPEED_VAL end
+        end)
+    else
+        local hum = getHum()
+        if hum then hum.WalkSpeed = walkspeedSalvo end
+    end
+end)
+
+-- ================================================================
+-- 3. JUMP
+-- ================================================================
+addToggle("🦘 High Jump", function(on)
+    jumpOn = on
+    if jumpConn then jumpConn:Disconnect() jumpConn = nil end
+    if on then
+        jumpConn = RS.Heartbeat:Connect(function()
+            local hum = getHum()
+            if hum then hum.UseJumpPower = true hum.JumpPower = JUMP_VAL end
+        end)
+    else
+        local hum = getHum()
+        if hum then hum.JumpPower = jumppowerSalvo end
+    end
+end)
+
+-- ================================================================
+-- 4. INFINITE JUMP
+-- ================================================================
+addToggle("🦅 Infinite Jump", function(on)
+    infJumpOn = on
+    if infJumpConn then infJumpConn:Disconnect() infJumpConn = nil end
+    if on then
+        infJumpConn = UIS.JumpRequest:Connect(function()
+            local hum = getHum()
+            if hum then hum:ChangeState(Enum.HumanoidStateType.Jumping) end
+        end)
+    end
+end)
+
+-- ================================================================
+-- 5. NOCLIP
+-- ================================================================
+addToggle("👻 Noclip", function(on)
+    noclipOn = on
+    if noclipConn then noclipConn:Disconnect() noclipConn = nil end
+    if on then
+        noclipConn = RS.Stepped:Connect(function()
+            local chr = P.Character
+            if chr then
+                for _, v in ipairs(chr:GetDescendants()) do
+                    if v:IsA("BasePart") and v.CanCollide then v.CanCollide = false end
+                end
+            end
+        end)
+    end
+end)
+
+-- ================================================================
+-- 6. FLY
+-- ================================================================
+local function pararFly()
+    if flyConn then flyConn:Disconnect() flyConn = nil end
+    if flyBV then flyBV:Destroy() flyBV = nil end
+    if flyBG then flyBG:Destroy() flyBG = nil end
+end
+
+addToggle("🕊 Fly", function(on)
+    flyOn = on
+    if not on then pararFly() return end
+    local hrp = getHRP()
+    if not hrp then return end
+
+    flyBV = Instance.new("BodyVelocity")
+    flyBV.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    flyBV.Velocity = Vector3.zero
+    flyBV.Parent = hrp
+
+    flyBG = Instance.new("BodyGyro")
+    flyBG.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+    flyBG.P = 1000
+    flyBG.D = 50
+    flyBG.Parent = hrp
+
+    flyConn = RS.RenderStepped:Connect(function()
+        if not flyOn or not hrp or not hrp.Parent then return end
+        local moveDir = Vector3.zero
+        if UIS:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + C.CFrame.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - C.CFrame.LookVector end
+        if UIS:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - C.CFrame.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + C.CFrame.RightVector end
+        if UIS:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
+        if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir = moveDir - Vector3.new(0, 1, 0) end
+        if moveDir.Magnitude > 0 then flyBV.Velocity = moveDir.Unit * 80 else flyBV.Velocity = Vector3.zero end
+        flyBG.CFrame = C.CFrame
+    end)
+end)
+
+-- ================================================================
+-- 7. ESP
+-- ================================================================
+addToggle("👁 ESP Players", function(on)
+    espOn = on
+    if not on then
+        for _, h in pairs(espHighlights) do
+            if h and h.Parent then h:Destroy() end
+        end
+        espHighlights = {}
+        return
+    end
+    local function aplicar(plr)
+        if plr == P then return end
+        local chr = plr.Character
+        if not chr then return end
+        if espHighlights[plr] and espHighlights[plr].Parent then espHighlights[plr]:Destroy() end
+        local h = Instance.new("Highlight")
+        h.FillColor = Color3.fromRGB(255, 50, 50)
+        h.OutlineColor = Color3.fromRGB(255, 255, 255)
+        h.FillTransparency = 0.5
+        h.OutlineTransparency = 0
+        h.Adornee = chr
+        h.Parent = chr
+        espHighlights[plr] = h
+    end
+    for _, plr in ipairs(game:GetService("Players"):GetPlayers()) do aplicar(plr) end
+    game:GetService("Players").PlayerAdded:Connect(function(plr)
+        if espOn then
+            plr.CharacterAdded:Connect(function()
+                task.wait(0.5)
+                if espOn then aplicar(plr) end
+            end)
+        end
+    end)
+end)
+
+-- ================================================================
+-- 8. AUTO BUY
+-- ================================================================
+local function visivel(prompt)
+    local pt = pegarParte(prompt)
+    if not pt then return true end
+    local camPos = C.CFrame.Position
+    if (camPos - pt.Position).Magnitude > 50 then return false end
+    local dir = (pt.Position - camPos).Unit
+    local ang = math.deg(math.acos(math.clamp(dir:Dot(C.CFrame.LookVector), -1, 1)))
+    if ang > 80 then return false end
+    local rp = RaycastParams.new()
+    rp.FilterType = Enum.RaycastFilterType.Exclude
+    rp.FilterDescendantsInstances = {P.Character, C}
+    rp.IgnoreWater = true
+    local r = workspace:Raycast(camPos, pt.Position - camPos, rp)
+    if r and r.Instance ~= pt and not r.Instance:IsDescendantOf(pt) and not pt:IsDescendantOf(r.Instance) then
+        return false
+    end
+    return true
+end
+
+local function executarBuy()
+    if buyProcessando then return end
+    buyProcessando = true
+    local lista = {}
+    for _, o in ipairs(workspace:GetDescendants()) do
+        if o:IsA("ProximityPrompt") and o.Enabled and visivel(o) then
+            table.insert(lista, o)
+        end
+    end
+    if #lista == 0 then buyProcessando = false return end
+    table.sort(lista, function(a, b)
+        local pa, pb = pegarParte(a), pegarParte(b)
+        if not pa then return false end
+        if not pb then return true end
+        return (C.CFrame.Position - pa.Position).Magnitude < (C.CFrame.Position - pb.Position).Magnitude
+    end)
+    for _, prompt in ipairs(lista) do
+        if not buyOn then break end
+        pcall(function()
+            prompt:InputHoldBegin()
+            task.wait(prompt.HoldDuration + 0.05)
+            prompt:InputHoldEnd()
+        end)
+        task.wait(0.25)
+    end
+    buyProcessando = false
+end
+
+task.spawn(function()
+    while sg.Parent do
+        task.wait(0.5)
+        if buyOn and not buyProcessando then executarBuy() end
+    end
+end)
+
+addToggle("🛒 Auto Buy", function(on) buyOn = on end)
+
+-- ================================================================
+-- 9. RESET POSITION
+-- ================================================================
+addAction("⬆ Reset Position", function()
+    local hrp = getHRP()
+    if hrp then hrp.CFrame = hrp.CFrame + Vector3.new(0, 50, 0) end
+end)
+
+-- ================================================================
+-- 10. DESLIGAR TUDO
+-- ================================================================
+addAction("⛔ Desligar Tudo", function()
+    freezeOn = false removerFreeze()
+    speedOn = false
+    if speedConn then speedConn:Disconnect() speedConn = nil end
+    local hum = getHum()
+    if hum then hum.WalkSpeed = walkspeedSalvo hum.JumpPower = jumppowerSalvo end
+    jumpOn = false
+    if jumpConn then jumpConn:Disconnect() jumpConn = nil end
+    infJumpOn = false
+    if infJumpConn then infJumpConn:Disconnect() infJumpConn = nil end
+    noclipOn = false
+    if noclipConn then noclipConn:Disconnect() noclipConn = nil end
+    flyOn = false pararFly()
+    espOn = false
+    for _, h in pairs(espHighlights) do
+        if h and h.Parent then h:Destroy() end
+    end
+    espHighlights = {}
+    buyOn = false
+    for _, b in ipairs(main:GetChildren()) do
+        if b:IsA("TextButton") and b.BackgroundColor3 == ROXO_ATIV then
+            b.BackgroundColor3 = ROXO
+        end
+    end
+end)
+
+-- ================================================================
+-- AJUSTA ALTURA FINAL
+-- ================================================================
+main.Size = UDim2.new(0, W, 0, Y + 10)
+
+-- ================================================================
+-- RESPAWN
+-- ================================================================
+P.CharacterAdded:Connect(function()
+    walkspeedSalvo = 16
+    jumppowerSalvo = 50
+    task.wait(0.6)
+    if freezeOn then aplicarFreeze() end
+    if speedOn then
+        local hum = getHum() if hum then hum.WalkSpeed = SPEED_VAL end
+    end
+    if jumpOn then
+        local hum = getHum() if hum then hum.UseJumpPower = true hum.JumpPower = JUMP_VAL end
+    end
+end)
+
+print("[ADMIN ABUSE EAB] Carregado!")
